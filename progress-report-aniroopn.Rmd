@@ -1,0 +1,82 @@
+---
+title: "progress-report-aniroopn"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(Lahman)
+library(janitor)
+```
+
+# 1. Scrape the data
+
+```{r}
+url <- "https://www.baseball-reference.com/awards/hof_2026.shtml"
+
+page <- read_html(url)
+
+tables <- page %>%
+  html_table(fill = TRUE)
+
+# Use the FIRST table
+hof_raw <- tables[[1]]
+
+head(hof_raw)
+
+```
+
+# 2. Fix the column names
+
+```{r}
+data <- hof_raw
+
+# First row contains actual column names
+colnames(data) <- data[1, ]
+
+# Remove the first row
+data <- data[-1, ]
+
+head(data)
+```
+
+# 3. Clean the data
+
+```{r}
+hof_clean <- data %>%
+  select(Name, Votes, `%vote`) %>%
+  mutate(
+    year = 2026,
+    Votes = as.numeric(Votes),
+    percent_of_vote = readr::parse_number(`%vote`),
+    inducted = ifelse(percent_of_vote >= 75, "Y", "N")
+  ) %>%
+  rename(candidate_name = Name)
+
+hof_clean
+```
+
+# 4. Save CSV
+
+```{r}
+write_csv(hof_clean, "HallOfFame_2026.csv")
+```
+
+# 5. Compare with Lahman
+
+```{r}
+lahman_2026 <- HallOfFame %>%
+  filter(yearID == 2026)
+
+hof_clean %>% count(inducted)
+lahman_2026 %>% count(inducted)
+```
+
+# 6. Conclusion
+
+After comparing the scraped data with the Lahman dataset, I found that the two sources do not match exactly. The Baseball Reference data includes the full BBWAA ballot, which contains all candidates who received votes. In contrast, the Lahman dataset stores official Hall of Fame voting records and may include fewer entries or different voting groups.
+
+This difference is reflected in the counts: the scraped dataset contains more candidates overall, while the Lahman dataset includes only a subset of those candidates. Additionally, the number of inducted players differs slightly between the two sources due to how the data is recorded.
+
+Overall, this activity showed that even when datasets describe the same real-world event, they can differ significantly in structure and content. Understanding these differences is important when cleaning, analyzing, and comparing data from multiple sources.
