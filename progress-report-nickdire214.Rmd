@@ -1,0 +1,93 @@
+---
+title: "progress-report-nickdire214"
+author: "Dominic DiRe"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r packages}
+library(rvest)
+library(dplyr)
+library(stringr)
+library(readr)
+library(Lahman)
+library(ggplot2)
+```
+
+
+# Scrape the 2026 data
+
+We read the HTML from the Baseball Reference 2026 HOF page and extract all tables.
+
+```{r}
+url <- "https://www.baseball-reference.com/awards/hof_2026.shtml"
+supersecretsite <- read_html(url)
+tables <- html_table(supersecretsite)
+```
+
+```{r}
+head(tables)
+```
+Good comms on the row 1 being wack. The first row is the names of the columns.
+
+```{r}
+data <- tables[[1]] # pull
+actual_col_names <- data[1, ] # set
+colnames(data) <- actual_col_names # put
+data <- data[-1, ] # scrap
+head(data, 3) # money
+```
+
+
+# Cleaning data
+
+Select the needed cols, convert num vars, take the "-X" out ,put "inducted" on 75%.
+
+```{r}
+hof_2026 <- data %>%
+  select(Name, Votes, `%vote`) %>%
+  mutate(
+    Name = gsub("X-", "", Name),
+    yearID = 2026,
+    Votes = as.numeric(Votes),
+    percent_vote = readr::parse_number(`%vote`),
+    inducted = ifelse(percent_vote >= 75, "Y", "N")
+  ) %>%
+  rename(name = Name)
+
+hof_2026
+```
+
+
+# Exporting cleaned (mine not used but this is if)
+
+```{r}
+# readr::write_csv(hof_2026, "HallOfFame_2026.csv")
+```
+
+
+# Compare with the Lahman
+
+Filter Lahman to 2026 and compare counts
+
+```{r}
+lahman_2026 <- HallOfFame %>%
+  filter(yearID == 2026)
+
+hof_2026 %>%
+  count(inducted)
+
+lahman_2026 %>%
+  count(votedBy, inducted)
+```
+
+
+
+# Conclusion
+
+The scraped baseball dataset and the Lahman version talk about the same thing but are not presented the same. You kinda expect differences with this kinda thing, but I was surprised the Lahman data only included people voted by the Contemporary Baseball Era
+
+The scraped dataset overall shows every canidate who received one or more hall of fame vote. The Lahman dataset has a "votedBy" column which is not in the scraped data at all. Which like I said above inclueded one group of voting. The scraped data had 25 canidates and 2 above 75% (labeled inducted), whereas Lahman had 8 canidates and 1 inducted. 
