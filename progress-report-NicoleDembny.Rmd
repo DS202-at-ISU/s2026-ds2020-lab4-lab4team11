@@ -9,3 +9,61 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(rvest)
+library(tidyverse)
+url <- "https://www.baseball-reference.com/awards/hof_2026.shtml"
+html <- read_html(url)
+tables <- html_table(html)
+```
+
+Scraped the data. There is an issue where the column names are stored in the first row of the data table. 
+
+```{r}
+data <- tables[[1]]
+actual_col_names <- data[1, ]
+colnames(data) <- actual_col_names
+data <- data[-1, ]
+head(data, 5)
+```
+The table is now fixed so that the column names are no longer in the first row. 
+
+```{r}
+names(data)
+```
+The scraped dataset has 37 different variables. It only contains the 2026 BBWAA ballot.
+
+```{r}
+library(Lahman)
+head(HallOfFame,3)
+```
+
+```{r}
+names(HallOfFame)
+```
+The Lahman HallOfFame table only has 9 different variables, but it contains different years.
+
+For comparing the scraped data and the HallOfFame data, three columns should be kept from the table: Name, Votes, and %vote. The year should be added to clarify that the table only contains 2026 data. A column for inducted can also be added since we know the percent vote, and any player with a percent vote >= 75% is inducted. 
+
+```{r}
+cleaned.data <- data |> select(Name, Votes, `%vote`) |> mutate(yearID = 2026, Name = gsub("^X-", "", Name), Votes = as.numeric(Votes), percent.vote = readr::parse_number(`%vote`), inducted = ifelse(percent.vote >= 75, "Y", "N")) |> select(Name, yearID, votes = Votes, percent.vote, inducted)
+head(cleaned.data)
+```
+
+This is the cleaned scraped data with alterations to make it easy to compare to the HallOfFame data table.
+
+```{r}
+HallOfFame2026 <- HallOfFame |> filter(yearID == 2026)
+head(HallOfFame2026)
+```
+
+This is the HallOfFame data filtered to 2026. 
+
+```{r}
+HallOfFame2026 |> count(votedBy, inducted)
+cleaned.data |> count(inducted)
+```
+
+The HallOfFame dataset had 1 player inducted and 7 players not inducted in 2026. The scraped dataset had 2 players inducted and 25 players not inducted in 2026. 
+
+
