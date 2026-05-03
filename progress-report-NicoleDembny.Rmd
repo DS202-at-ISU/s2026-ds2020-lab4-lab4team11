@@ -48,6 +48,7 @@ For comparing the scraped data and the HallOfFame data, three columns should be 
 ```{r}
 cleaned.data <- data |> select(Name, Votes, `%vote`) |> mutate(yearID = 2026, Name = gsub("^X-", "", Name), Votes = as.numeric(Votes), percent.vote = readr::parse_number(`%vote`), inducted = ifelse(percent.vote >= 75, "Y", "N")) |> select(Name, yearID, votes = Votes, percent.vote, inducted)
 head(cleaned.data)
+dim(cleaned.data)
 ```
 
 This is the cleaned scraped data with alterations to make it easy to compare to the HallOfFame data table.
@@ -66,4 +67,7 @@ cleaned.data |> count(inducted)
 
 The HallOfFame dataset had 1 player inducted and 7 players not inducted in 2026. The scraped dataset had 2 players inducted and 25 players not inducted in 2026. 
 
+```{r}
+readr::write_csv(cleaned.data, "HallOfFame_2026.csv")
+```
 
