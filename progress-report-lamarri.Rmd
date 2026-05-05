@@ -1,5 +1,71 @@
 ---
 title: "progress-report-lamarri"
-output: html_document
+output: github_document
 ---
 
+### Import libraries
+```{r}
+library(tidyverse)
+library(rvest)
+library(Lahman)
+```
+
+# Scrape Data
+
+```{r}
+url <- "https://www.baseball-reference.com/awards/hof_2026.shtml"
+url_page <- read_html(url)
+tables <- html_table(url_page)
+head(tables)
+```
+
+# Fix column names
+
+```{r}
+# Need to use first table
+data <- tables[[1]]
+
+# Since there is a distinction between Batting Stats and Pitching Stats in the first row, the variable names need to be corrected 
+colnames(data) <- data[1,]
+
+# Remove first row
+data <- data[-1,]
+
+# Check data
+head(data)
+```
+
+# Clean data
+
+```{r}
+hof2026 <- data %>%
+  select(Name, Votes, `%vote`) %>%
+  mutate(
+    year = 2026,
+    Name = gsub("X-", "", Name),
+    Votes = as.numeric(Votes), #should be numeric
+    VotePercent = readr::parse_number(`%vote`),
+    inducted = ifelse(VotePercent >= 75, "Y", "N")
+  ) %>%
+  rename(name = Name)
+
+# Look at new dataset
+hof2026
+
+# Identify how many inducted
+hof2026 %>% count(inducted)
+```
+
+# Look at Lahman data
+
+```{r}
+lahman2026 <- HallOfFame %>% 
+  filter(yearID == 2026)
+
+# Identify how many inducted
+lahman2026 %>% count(inducted)
+```
+
+# Conclusion
+
+When comparing the scraped data to the Lahman dataset, it becomes clear that they provide distinct information. The scraped data is more inclusive by reflecting the entire BBWAA ballot and capturing every candidate who received a vote, while the Lahman dataset serves as an official repository that may prioritize specific voting groups or omit certain entries. This discrepancy can be seen in the raw counts: the scraped dataset has a larger list of candidates, while the Lahman records represent a more curated subset. Additionally, variations in the number of inducted players appear between the two, stemming from differences in recording protocols. Ultimately, this comparison demonstrates that datasets describing the same phenomenon can differ significantly in scope and structure, reinforcing the necessity of thoroughly auditing sources during the data cleaning and integration process.
